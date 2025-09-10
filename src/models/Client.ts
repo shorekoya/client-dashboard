@@ -35,7 +35,7 @@ const clientSchema = new Schema<IClient>(
     },
   },
   {
-    timestamps: true, // auto adds createdAt & updatedAt
+    timestamps: true,
   }
 );
 

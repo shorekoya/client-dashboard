@@ -1,46 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/User';
 
-interface AuthRequest extends Request {
-  user?: IUser;
+interface SessionAuthRequest extends Request {
+  session: any; // session type is augmented via express-session.d.ts
 }
 
-// Middleware: Verify JWT + attach user
-export const protect = async (
-  req: AuthRequest,
+// Protect route using session
+export const protect = (
+  req: SessionAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-        id: string;
-      };
-
-      const user = await User.findById(decoded.id).select('-password');
-      if (!user) return res.status(401).json({ message: 'User not found' });
-
-      req.user = user;
-      next();
-    } catch (error) {
-      return res.status(401).json({ message: 'Not authorized, token failed' });
-    }
-  } else {
-    return res.status(401).json({ message: 'Not authorized, no token' });
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ message: 'Not authorized, please log in' });
   }
+  next();
 };
 
-// Middleware: Check Role
+// Check role
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+  return (req: SessionAuthRequest, res: Response, next: NextFunction) => {
+    const user = req.session.user;
+    if (!user || !roles.includes(user.role)) {
       return res.status(403).json({ message: 'Forbidden: insufficient role' });
     }
     next();
